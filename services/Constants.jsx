@@ -51,47 +51,88 @@ export const InterviewType = [
     },
 ]
 
-export const QUESTIONS_PROMPT = `You are an expert technical interviewer.
-Based on the following inputs, generate a well-structured list of high-quality interview questions:
-Job Title: {{jobTitle}}
-Job Description:{{jobDescription}}
-Interview Duration: {{duration}}
-Interview Type: {{type}}
-📝 Your task:
-Analyze the job description to identify key responsibilities, required skills, and expected experience.
-Generate a list of interview questions depends on interview duration
-Adjust the number and depth of questions to match the interview duration.
-Ensure the questions match the tone and structure of a real-life {{type}} interview.
-🧩 Format your response in JSON format with array list of questions.
-format: interviewQuestions=[
+export const QUESTIONS_PROMPT = `
+You are an expert technical interviewer.  
+Your task is to generate structured interview questions strictly in JSON format.
+
+JOB INFORMATION:
+- Job Title: {{jobTitle}}
+- Job Description: {{jobDescription}}
+- Interview Duration (minutes): {{duration}}
+- Interview Type: {{type}}
+
+REQUIREMENTS:
+1. Analyze the job description and extract required skills, responsibilities, and experience level.
+2. Based on the interview duration, generate an appropriate number of questions.
+   - 10 minutes → 3–4 questions
+   - 15 minutes → 5–7 questions
+   - 20 minutes → 8–10 questions
+3. Include a mix of:
+   - Technical
+   - Behavioral
+   - Problem Solving
+   - Experience-based
+   - Leadership (if applicable)
+4. Make questions practical, role-specific, and realistic.
+
+OUTPUT FORMAT (STRICT JSON ONLY):
+
 {
- question:'',
- type:'Technical/Behavioral/Experince/Problem Solving/Leaseship'
-},{
-...
-}]
-🎯 The goal is to create a structured, relevant, and time-optimized interview plan for a {{jobTitle}} role.`
-
-
-
-export const FEEDBACK_PROMPT=`{{conversation}}
-Depends on this Interview Conversation between assitant and user, 
-Give me feedback for user interview. Give me rating out of 10 for technical Skills, 
-Communication, Problem Solving, Experince. Also give me summery in 3 lines 
-about the interview and one line to let me know whether is recommanded 
-for hire or not with msg. Give me response in JSON format
-{
-    feedback:{
-        rating:{
-            techicalSkills:5,
-            communication:6,
-            problemSolving:4,
-            experince:7
-        },
-        summery:<in 3 Line>,
-        Recommendation:'',
-        RecommendationMsg:''
-
+  "interviewQuestions": [
+    {
+      "question": "string",
+      "type": "Technical | Behavioral | Problem Solving | Experience | Leadership"
     }
-}`
+  ]
+}
+
+DO NOT include explanations, markdown, comments, or text outside the JSON.
+Return ONLY the JSON object.
+`;
+
+
+export const FEEDBACK_PROMPT = `
+You are an AI interview evaluator. Analyze the following interview conversation and produce structured feedback strictly in JSON format.
+
+CONVERSATION (CANDIDATE + INTERVIEWER MESSAGES):
+{{conversation}}
+
+YOUR TASKS:
+1. Evaluate the candidate's answers based on:
+   - Clarity
+   - Technical knowledge
+   - Problem-solving ability
+   - Communication
+   - Confidence
+   - Relevancy to job role
+2. Identify strengths and weaknesses from the conversation.
+3. Give a score from 1–10 in each category.
+4. Provide short, actionable improvement suggestions.
+5. Avoid judging personal traits — focus only on interview performance.
+
+OUTPUT FORMAT (STRICT JSON ONLY — NO MARKDOWN, NO COMMENTS):
+{
+  "overallScore": number,
+  "summary": "short paragraph",
+  "scores": {
+    "communication": number,
+    "technicalKnowledge": number,
+    "problemSolving": number,
+    "confidence": number,
+    "relevancy": number
+  },
+  "strengths": [
+    "string"
+  ],
+  "weaknesses": [
+    "string"
+  ],
+  "suggestions": [
+    "string"
+  ]
+}
+
+Return **only** the JSON object and nothing else.
+`;
+
 

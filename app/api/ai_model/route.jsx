@@ -1,37 +1,56 @@
+export const runtime = "nodejs";
+
 import { QUESTIONS_PROMPT } from "@/services/Constants";
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
-export async function POST(req){
+export async function POST(req) {
+  try {
+    const { jobPosition, jobDescription, duration, type } = await req.json();
 
-    const {jobPosition,jobDescription,duration,type}=await req.json();
+    const FINAL_PROMPT = QUESTIONS_PROMPT
+      .replaceAll("{{jobTitle}}", jobPosition)
+      .replaceAll("{{jobDescription}}", jobDescription)
+      .replaceAll("{{duration}}", duration)
+      .replaceAll("{{type}}", type);
 
-    const FINAL_PROMPT=QUESTIONS_PROMPT
-    .replace('{{jobTitle}},jobPosition')
-    .replace('{{jobDescription}},jobDescription')
-    .replace('{{duration}},duration')
-    .replace('{{type}},type')
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+    });
 
-    console.log(FINAL_PROMPT);
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: FINAL_PROMPT,
+    });
 
-    try{
-    const openai = new OpenAI({
-        baseURL: "https://openrouter.ai/api/v1",
-        apiKey: process.env.OPENROUTER_API_KEY,
-    })
-    const completion = await openai.chat.completions.create({
-        model: "google/gemini-2.0-flash-exp:free",
-        messages: [
-          { role: "user", content: FINAL_PROMPT }
-        ],
-      
-      })
-    
-      return NextResponse.json(completion.choices[0].message)
-}
-catch(e)
-{
-    console.log(e)
-    return NextResponse.json(e)
-}
+    console.log("GEMINI RAW RESPONSE:", response);
+
+    // 🔥 CORRECT WAY TO GET TEXT
+    let text =
+      response.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+
+    console.log("OUTPUT TEXT:", text);
+
+    if (!text) {
+      console.log("EMPTY GEMINI RESPONSE");
+      return NextResponse.json(
+        { error: "Empty response from Gemini" },
+        { status: 500 }
+      );
+    }
+
+    // Clean up code fences if generated
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+    try {
+      const parsed = JSON.parse(text);
+      return NextResponse.json(parsed);
+    } catch (e) {
+      console.log("FAILED TO PARSE JSON:", text);
+      return NextResponse.json({ raw: text });
+    }
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

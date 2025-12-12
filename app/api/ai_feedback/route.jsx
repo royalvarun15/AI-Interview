@@ -1,30 +1,39 @@
+export const runtime = "nodejs";
+
 import { FEEDBACK_PROMPT } from "@/services/Constants";
-import OpenAI from "openai";
+import { NextResponse } from "next/server";
+import { GoogleGenAI } from "@google/genai";
 
 export async function POST(req) {
+  try {
+    const { conversation } = await req.json();
 
-    const {conversation}=await req.json();
-    const FINAL_PROMPT=FEEDBACK_PROMPT.replace('{{conversation}}',JSON.stringify(conversation))
+    const FINAL_PROMPT = FEEDBACK_PROMPT.replace(
+      "{{conversation}}",
+      JSON.stringify(conversation)
+    );
 
-    try{
-        const openai = new OpenAI({
-            baseURL: "https://openrouter.ai/api/v1",
-            apiKey: process.env.OPENROUTER_API_KEY,
-        })
-        const completion = await openai.chat.completions.create({
-            model: "google/gemini-2.0-flash-exp:free",
-            messages: [
-              { role: "user", content: FINAL_PROMPT }
-            ],
-          
-          })
-        
-          return NextResponse.json(completion.choices[0].message)
-    }
-    catch(e)
-    {
-        console.log(e)
-        return NextResponse.json(e)
-    }
-    
+    console.log("FINAL_PROMPT:", FINAL_PROMPT);
+
+    // NEW GEMINI API
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+    });
+
+    // NEW MODEL (Stable & supports generateContent)
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: FINAL_PROMPT,
+    });
+
+    // NEW API format → output text lives here
+    const text = response.output_text;
+
+    console.log("GEMINI OUTPUT:", text);
+
+    return NextResponse.json({ feedback: text });
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
