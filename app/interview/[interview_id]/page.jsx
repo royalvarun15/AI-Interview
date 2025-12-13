@@ -19,7 +19,7 @@ function Interview() {
   const { setInterviewInfo } = useContext(InterviewDataContext);
   const router = useRouter();
 
-  // Load interview details
+
   useEffect(() => {
     if (interview_id) {
       GetInterviewDetails();
@@ -75,7 +75,6 @@ function Interview() {
 
     const selectedInterview = interviews[0];
 
-    // Save all interview info to context for the StartInterview page
     setInterviewInfo({
       userName: userName,
       userEmail: userEmail,
@@ -118,8 +117,7 @@ function Interview() {
           />
         </div>
 
-        {/* Before you begin notice */}
-        <div className="p-3 bg-violet-200 flex gap-4 rounded-lg mt-5">
+            <div className="p-3 bg-violet-200 flex gap-4 rounded-lg mt-5">
           <Info className="text-primary" />
           <div>
             <h2 className="font-bold">Before you Begin</h2>
@@ -131,7 +129,7 @@ function Interview() {
           </div>
         </div>
 
-        {/* Join Button */}
+
         <Button
           className={"mt-5 w-full font-bold"}
           disabled={loading || !userName || !userEmail}

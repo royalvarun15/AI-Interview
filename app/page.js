@@ -4,7 +4,7 @@ import Link from "next/link";
 export default function Page() {
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900">
-      {/* Header */}
+
       <header className="max-w-7xl mx-auto px-6 sm:px-8 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-50 h-10 rounded-lg from-violet-500 to-indigo-500 flex items-center justify-center text-white font-semibold">
@@ -92,9 +92,18 @@ export default function Page() {
 
         <div className="lg:col-span-5 flex justify-center lg:justify-end">
           <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6">
-            {/* Parent must be relative for Image fill */}
+  
             <div className="relative w-full h-56 rounded-lg overflow-hidden from-violet-50 to-white border border-slate-100">
-              <Image src="/images/hero-dashboard.png" alt="dashboard" fill style={{ objectFit: "cover" }} />
+            <video
+              src="/v1.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+              >
+                 Your browser does not support the video tag.
+              </video>
             </div>
 
             <div className="mt-4 flex items-center justify-between">

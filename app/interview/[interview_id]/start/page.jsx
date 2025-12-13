@@ -12,8 +12,10 @@ import { useParams, useRouter } from "next/navigation";
 function StartInterview() {
   const { interviewInfo } = useContext(InterviewDataContext);
 
-  // FIXED → Vapi instance created ONCE (prevents undefined crash)
+
   const [vapi] = useState(() => new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY));
+  console.log("VAPI KEY:", process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY);
+
 
   const [activeUser, setActiveUser] = useState(false);
   const [conversation, setConversation] = useState([]);
@@ -21,7 +23,7 @@ function StartInterview() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  // FIXED → Global error catching for Vapi
+
   useEffect(() => {
     vapi.on("error", (err) => {
       console.error("VAPI ERROR:", err);
@@ -29,7 +31,6 @@ function StartInterview() {
     });
   }, [vapi]);
 
-  // START CALL ONLY WHEN interviewInfo is loaded
   useEffect(() => {
     if (interviewInfo?.interviewData?.questionList?.length > 0) {
       startCall();
@@ -40,88 +41,117 @@ function StartInterview() {
     const questionList = interviewInfo.interviewData.questionList
       ?.map((q) => q.question)
       .join(", ");
-
+  
     const assistantOptions = {
       name: "AI Recruiter",
-      firstMessage: `Hi ${
-        interviewInfo.userName
-      }, how are you? Ready for your interview on ${
-        interviewInfo.interviewData.jobPosition
-      }?`,
+      firstMessage: `Hi ${interviewInfo.userName}, how are you? Ready for your interview on ${interviewInfo.interviewData.jobPosition}?`,
+      
       transcriber: {
         provider: "deepgram",
         model: "nova-2",
         language: "en-US",
       },
+  
       voice: {
         provider: "playht",
         voiceId: "jennifer",
       },
+  
       model: {
-        provider: "openai",
-        model: "gpt-4",
+        provider: "google",
+        model: "gemini-2.5-flash",
         messages: [
           {
             role: "system",
             content: `
-You are an AI interviewer.
-Ask the following questions one by one:
-${questionList}
-
-Guidelines:
-- Ask one question at a time and wait for candidate response.
-- Give short encouraging feedback.
-- Rephrase if they struggle.
-- End with a brief summary of performance.
-`.trim(),
+  You are an AI interviewer.
+  Ask the following questions one by one:
+  ${questionList}
+  
+  Guidelines:
+  - Ask one question at a time and wait for candidate response.
+  - Give short encouraging feedback.
+  - Rephrase if they struggle.
+  - End with a brief summary of performance.
+  `.trim(),
           },
         ],
       },
     };
-
+  
     vapi.start(assistantOptions);
   };
+  
 
   const stopInterview = () => {
     vapi.stop();
   };
 
-  // EVENT HANDLERS
-  vapi.on("call-start", () => {
-    toast("Call Connected...");
-  });
 
-  vapi.on("speech-start", () => {
-    setActiveUser(false);
-  });
-
-  vapi.on("speech-end", () => {
-    setActiveUser(true);
-  });
-
-  vapi.on("call-end", () => {
-    toast("Interview Ended");
-    GenerateFeedback();
-  });
-
-  vapi.on("message", (message) => {
-    setConversation(message?.conversation || []);
-  });
+  useEffect(() => {
+    if (!vapi) return;
+  
+    const handleCallStart = () => {
+      toast("Call Connected...");
+    };
+  
+    const handleSpeechStart = () => setActiveUser(false);
+  
+    const handleSpeechEnd = () => setActiveUser(true);
+  
+    const handleCallEnd = () => {
+      toast("Interview Ended");
+      GenerateFeedback();
+    };
+  
+    const handleMessage = (msg) => {
+      setConversation(msg?.conversation || []);
+    };
+  
+    vapi.on("call-start", handleCallStart);
+    vapi.on("speech-start", handleSpeechStart);
+    vapi.on("speech-end", handleSpeechEnd);
+    vapi.on("call-end", handleCallEnd);
+    vapi.on("message", handleMessage);
+  
+    return () => {
+      vapi.off("call-start", handleCallStart);
+      vapi.off("speech-start", handleSpeechStart);
+      vapi.off("speech-end", handleSpeechEnd);
+      vapi.off("call-end", handleCallEnd);
+      vapi.off("message", handleMessage);
+    };
+  
+  }, [vapi]);
+  
 
   const GenerateFeedback = async () => {
     try {
-      const result = await axios.post("/api/ai_feedback", {
-        conversation,
-      });
-
-      const raw = result.data.raw || JSON.stringify(result.data);
-      const cleaned = raw
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-        .trim();
-
-      const parsedFeedback = JSON.parse(cleaned);
-
+      const result = await axios.post("/api/ai_feedback", { conversation });
+  
+      // Safety: ensure something was returned
+      let text = result.data.feedback || result.data.raw || "";
+  
+      if (!text) {
+        console.warn("⚠ No feedback received from AI");
+        return;
+      }
+  
+    
+      text = text.replace(/```json/g, "")
+                 .replace(/```/g, "")
+                 .trim();
+  
+ 
+      let parsedFeedback;
+      try {
+        parsedFeedback = JSON.parse(text);
+      } catch (err) {
+        console.warn("⚠ AI did not return JSON. Saving raw text instead.");
+        parsedFeedback = { summary: text };
+      }
+  
+     
       await supabase.from("interview-feedback").insert([
         {
           userName: interviewInfo.userName,
@@ -131,13 +161,14 @@ Guidelines:
           recommended: false,
         },
       ]);
-
+  
       router.replace(`/interview/${interview_id}/completed`);
     } catch (err) {
       console.error("FEEDBACK ERROR:", err);
       toast.error("Failed to save feedback.");
     }
   };
+  
 
   return (
     <div className="p-20 lg:px-48 xl:px-56">
@@ -150,7 +181,7 @@ Guidelines:
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-7 mt-5">
-        {/* AI CARD */}
+     
         <div className="bg-white h-[300px] rounded-lg border flex flex-col gap-1 items-center justify-center">
           <div className="relative">
             {!activeUser && (
@@ -167,7 +198,7 @@ Guidelines:
           <h2>AI Recruiter</h2>
         </div>
 
-        {/* USER CARD */}
+   
         <div className="bg-white h-[300px] rounded-lg border flex flex-col gap-6 items-center justify-center">
           <div className="relative">
             {activeUser && (
@@ -181,7 +212,7 @@ Guidelines:
         </div>
       </div>
 
-      {/* Controls */}
+    
       <div className="flex gap-2 justify-end mt-5">
         <Mic className="h-10 w-10 p-3 bg-gray-500 text-white rounded-full cursor-pointer" />
 

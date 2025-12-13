@@ -15,18 +15,17 @@ export async function POST(req) {
 
     console.log("FINAL_PROMPT:", FINAL_PROMPT);
 
-    // NEW GEMINI API
+  
     const ai = new GoogleGenAI({
       apiKey: process.env.GEMINI_API_KEY,
     });
 
-    // NEW MODEL (Stable & supports generateContent)
+    
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: FINAL_PROMPT,
     });
 
-    // NEW API format → output text lives here
     const text = response.output_text;
 
     console.log("GEMINI OUTPUT:", text);

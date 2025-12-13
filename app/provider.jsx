@@ -1,58 +1,68 @@
-"use client"
-import { UserDetailContext } from '@/context/UserDetailContext';
-import { supabase } from '@/services/supabaseClient'
-import React, { useContext, useEffect, useState } from 'react'
+"use client";
+import { UserDetailContext } from "@/context/UserDetailContext";
+import { supabase } from "@/services/supabaseClient";
+import React, { useContext, useEffect, useState } from "react";
 
 function Provider({ children }) {
+  const [user, setUser] = useState(undefined);
 
-    const [user, setUser]=useState();
-    useEffect(()=>{
-        CreateNewUser();
-    },[])
+  useEffect(() => {
+    loadUser();
+  }, []);
 
-    const CreateNewUser=()=>{
-        supabase.auth.getUser().then(async ({data:{user}})=>{
-        //check if user already exist
-        let { data: Users, error } = await supabase
-            .from('Users')
-            .select("*")
-            .eq('email',user?.email);
-        
-        console.log(Users)
-        // if not then create new user
-        if(Users?.length == 0){
-           const { data, error }= await supabase.from("Users")
-            .insert([
-                {
-                    name:user?.user_metadata?.name,
-                    email:user?.email,
-                    picture:user?.user_metadata?.picture
-                }
-            ])
-            console.log(data);
-            setUser(data);
-            return;
-        }
+  const loadUser = async () => {
+    const { data: sessionData } = await supabase.auth.getUser();
 
-        if (Users && Users.length > 0) {
-            setUser(Users[0]);
-          } else {
-            setUser(null); // or handle empty user case
-          }
-          
 
-        })
+    if (!sessionData?.user?.email) {
+      console.log("User session NOT ready yet");
+      setUser(null);
+      return;
     }
+
+    const sessionUser = sessionData.user;
+
+
+    const { data: Users, error } = await supabase
+      .from("Users")
+      .select("*")
+      .eq("email", sessionUser.email);
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return;
+    }
+
+
+    if (!Users || Users.length === 0) {
+      const { data, error } = await supabase
+        .from("Users")
+        .insert([
+          {
+            name: sessionUser.user_metadata?.name,
+            email: sessionUser.email,
+            picture: sessionUser.user_metadata?.picture,
+          },
+        ])
+        .select();
+
+      if (!error) setUser(data[0]);
+      return;
+    }
+
+    setUser(Users[0]);
+  };
+
   return (
-    <UserDetailContext.Provider value={{ user, setUser}}>
-        <div>{children}</div>
+    <UserDetailContext.Provider value={{ user, setUser }}>
+      <div>{children}</div>
     </UserDetailContext.Provider>
-  )
+  );
 }
 
-export default Provider
+export default Provider;
 
-export const useUser=()=>{
-    const context=useContext(UserDetailContext);
-    return context;
-}
+export const useUser = () => {
+  const context = useContext(UserDetailContext);
+  return context;
+};

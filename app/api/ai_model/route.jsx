@@ -25,7 +25,7 @@ export async function POST(req) {
 
     console.log("GEMINI RAW RESPONSE:", response);
 
-    // 🔥 CORRECT WAY TO GET TEXT
+    
     let text =
       response.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
 
@@ -39,7 +39,7 @@ export async function POST(req) {
       );
     }
 
-    // Clean up code fences if generated
+
     text = text.replace(/```json/g, "").replace(/```/g, "").trim();
 
     try {
